@@ -192,3 +192,6 @@ def list_all_files():
                     for item in items:
                         if item["type"] == "File":
                             print("        " + item["title"])
+
+
+list_all_files()
