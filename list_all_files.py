@@ -1,7 +1,7 @@
 import requests
 import json
 from datetime import datetime
-import pytz
+import os
 
 # Your Canvas API access token
 token = "21450~ib3PcTIWpRbqQW8FipYOIjYYWtdaxtPWj0YODMYaPzmMilt2kmZCx5OE4Gpe6Gxe"
@@ -41,9 +41,9 @@ def display_folders_and_files(parent_type, parent_id, indentation=0):
             special_indentation = indentation
         else:
             folder_name = folder["name"]
-            dash_line = "-" * len(folder_name)
-            print(" " * indentation + " " + folder_name)
-            print(" " * indentation + f"|{dash_line}|")
+            dash_line = "\-" * (len(folder_name) // 2)
+            print(" " * indentation + folder_name)
+            print(" " * indentation + f" {dash_line}")
             special_indentation = indentation + 4
 
         files = get_files(folder["id"])
@@ -51,32 +51,6 @@ def display_folders_and_files(parent_type, parent_id, indentation=0):
             print(" " * special_indentation + file["display_name"])
         if folder["name"] != "course files":
             display_folders_and_files("folders", folder["id"], special_indentation)
-
-
-# Main function to display courses and their folders and files
-def main():
-    courses = get_courses()
-    for course in courses:
-        if "name" in course:
-            course_name = course["name"]
-            equal_line = "=" * len(course_name)
-            print(f"\n{equal_line}\n{course_name}\n{equal_line}")
-            display_folders_and_files("courses", course["id"], indentation=4)
-            # Check if there are files in the 'files' section
-            course_files = get_course_files(course["id"])
-            if course_files:
-                display_folders_and_files("courses", course["id"], indentation=4)
-            else:
-                print("    No files found in 'files' path. Checking 'Modules'...")
-
-                # Fetch and display module items
-                modules = get_modules(course["id"])
-                for module in modules:
-                    print("    " + module["name"] + ":")
-                    items = get_module_items(course["id"], module["id"])
-                    for item in items:
-                        if item["type"] == "File":
-                            print("        " + item["title"])
 
 
 # Function to get paginated data
@@ -149,6 +123,72 @@ def get_course_files(course_id):
     return get_paginated_data(files_url)
 
 
-# Run the main function
-if __name__ == "__main__":
-    main()
+def download_file(url, destination_path):
+    with requests.get(url, stream=True, headers=headers) as response:
+        with open(destination_path, "wb") as f:
+            for chunk in response.iter_content(chunk_size=8192):
+                f.write(chunk)
+
+
+def download_files_in_folder(folder_id, destination_path):
+    # First, create any sub-folders
+    subfolders = get_folders("folders", folder_id)
+    for subfolder in subfolders:
+        subfolder_path = os.path.join(destination_path, subfolder["name"])
+        os.makedirs(subfolder_path, exist_ok=True)
+        download_files_in_folder(subfolder["id"], subfolder_path)
+
+    # Then, download the files in the current folder
+    files = get_files(folder_id)
+    for file in files:
+        download_file(file["url"], os.path.join(destination_path, file["display_name"]))
+
+
+def download_files_for_course(course_id, course_path):
+    folders = get_folders("courses", course_id)
+    for folder in folders:
+        if folder["name"] == "course files":
+            download_files_in_folder(folder["id"], course_path)
+            break
+
+
+def download_all_folders_and_files():
+    # Starting with the 'my files' folder in the home directory
+    root_folder = os.path.join(os.path.expanduser("~"), "my files")
+    os.makedirs(root_folder, exist_ok=True)
+
+    courses = get_courses()
+    for course in courses:
+        if (
+            "name" in course
+            and course["name"] == "CS2106 Introduction to Operating Systems [2310]"
+        ):
+            course_path = os.path.join(root_folder, course["name"])
+            os.makedirs(course_path, exist_ok=True)
+            download_files_for_course(course["id"], course_path)
+
+
+# Main function to display courses and their folders and files
+def list_all_files():
+    courses = get_courses()
+    for course in courses:
+        if "name" in course:
+            course_name = course["name"]
+            equal_line = "=" * len(course_name)
+            print(f"\n{equal_line}\n{course_name}\n{equal_line}")
+            display_folders_and_files("courses", course["id"], indentation=4)
+            # Check if there are files in the 'files' section
+            course_files = get_course_files(course["id"])
+            if course_files:
+                display_folders_and_files("courses", course["id"], indentation=4)
+            else:
+                print("    No files found in 'files' path. Checking 'Modules'...")
+
+                # Fetch and display module items
+                modules = get_modules(course["id"])
+                for module in modules:
+                    print("    " + module["name"] + ":")
+                    items = get_module_items(course["id"], module["id"])
+                    for item in items:
+                        if item["type"] == "File":
+                            print("        " + item["title"])

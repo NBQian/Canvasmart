@@ -2,6 +2,7 @@ import requests
 import json
 from datetime import datetime
 import pytz
+import os
 
 # Your Canvas API access token
 token = "21450~ib3PcTIWpRbqQW8FipYOIjYYWtdaxtPWj0YODMYaPzmMilt2kmZCx5OE4Gpe6Gxe"
@@ -88,6 +89,10 @@ for folder in folders:
         folder["hidden"],
         folder["hidden_for_user"],
     )
+folder_path = f"{base_url}/courses/45706"
+items = os.listdir(folder_path)
+print(items)
+
 # for file in files:
 #     print(file["filename"])
 # courses = get_courses()
