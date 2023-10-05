@@ -33,6 +33,8 @@ def display_folders_and_files(folder_id, indentation=0):
 
     folders = get_paginated_data(f"{base_url}/folders/{folder_id}/folders")
     for folder in folders:
+        if folder["name"] == "unfiled":
+            continue
         print(" " * indentation + folder["name"])
         print(" " * indentation + "\\" + "-" * len(folder["name"]) + "/")
         display_folders_and_files(folder["id"], indentation + 4)

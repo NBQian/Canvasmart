@@ -161,37 +161,11 @@ def download_all_folders_and_files():
     for course in courses:
         if (
             "name" in course
-            and course["name"] == "CS2106 Introduction to Operating Systems [2310]"
+            and course["name"] == "CS2105 Introduction to Computer Networks [2310]"
         ):
             course_path = os.path.join(root_folder, course["name"])
             os.makedirs(course_path, exist_ok=True)
             download_files_for_course(course["id"], course_path)
 
 
-# Main function to display courses and their folders and files
-def list_all_files():
-    courses = get_courses()
-    for course in courses:
-        if "name" in course:
-            course_name = course["name"]
-            equal_line = "=" * len(course_name)
-            print(f"\n{equal_line}\n{course_name}\n{equal_line}")
-            display_folders_and_files("courses", course["id"], indentation=4)
-            # Check if there are files in the 'files' section
-            course_files = get_course_files(course["id"])
-            if course_files:
-                display_folders_and_files("courses", course["id"], indentation=4)
-            else:
-                print("    No files found in 'files' path. Checking 'Modules'...")
-
-                # Fetch and display module items
-                modules = get_modules(course["id"])
-                for module in modules:
-                    print("    " + module["name"] + ":")
-                    items = get_module_items(course["id"], module["id"])
-                    for item in items:
-                        if item["type"] == "File":
-                            print("        " + item["title"])
-
-
-list_all_files()
+download_all_folders_and_files()
