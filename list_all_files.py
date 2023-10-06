@@ -2,15 +2,47 @@ import requests
 import json
 from datetime import datetime
 import os
+import json
 
-# Your Canvas API access token
-token = "21450~ib3PcTIWpRbqQW8FipYOIjYYWtdaxtPWj0YODMYaPzmMilt2kmZCx5OE4Gpe6Gxe"
+CONFIG_FILE = "config.json"
+config = {}
+
+
+def load_config():
+    try:
+        with open(CONFIG_FILE, "r") as f:
+            return json.load(f)
+    except FileNotFoundError:
+        return {}
+
+
+def save_config(config):
+    with open(CONFIG_FILE, "w") as f:
+        json.dump(config, f)
+
 
 # Base URL for your Canvas instance
 base_url = "https://canvas.nus.edu.sg/api/v1"
 
-# Headers for API calls
-headers = {"Authorization": f"Bearer {token}"}
+
+def is_token_expired(token):
+    h = {"Authorization": f"Bearer {token}"}
+    test_url = f"{base_url}/courses"
+    response = requests.get(test_url, headers=h)
+
+    # Checking for unauthorized or forbidden status codes
+    if response.status_code == 401 or response.status_code == 403:
+        # Optionally, check for specific message in response to confirm token issue
+        if (
+            "token is expired" in response.text
+        ):  # This message may vary, check Canvas API documentation
+            return True
+        return False
+    elif response.status_code == 200:
+        return False
+    else:
+        print(f"Unexpected response code: {response.status_code}")
+        return False
 
 
 # Function to get paginated data
@@ -58,8 +90,7 @@ def get_courses():
     filtered_courses = []
     for course in all_courses:
         if "created_at" in course:
-            course_sem = course["name"][-6:]
-            if course_sem == "[2310]":
+            if course["name"].endswith(config["semester"]):
                 filtered_courses.append(course)
 
     return filtered_courses
@@ -75,12 +106,6 @@ def get_modules(course_id):
 def get_module_items(course_id, module_id):
     items_url = f"{base_url}/courses/{course_id}/modules/{module_id}/items"
     return get_paginated_data(items_url)
-
-
-# Function to get files for a course
-def get_course_files(course_id):
-    files_url = f"{base_url}/courses/{course_id}/files"
-    return get_paginated_data(files_url)
 
 
 def download_file(url, destination_path):
@@ -142,15 +167,22 @@ def download_files_for_course(course_id, course_path):
 
 
 def download_all():
-    # Starting with the 'my files' folder in the home directory
-    root_folder = os.path.join(os.path.expanduser("~"), "my filess")
-    os.makedirs(root_folder, exist_ok=True)
+    # Starting with the path provided by the user
+    root_folder = config["download_path"]
+
+    # Check if the directory exists, if not then create it
+    if not os.path.exists(root_folder):
+        os.makedirs(root_folder)
 
     courses = get_courses()
     for course in courses:
-        if "name" in course and (course["name"][:6] == "ES2660"):
-            course_path = os.path.join(root_folder, course["name"])
-            os.makedirs(course_path, exist_ok=True)
+        if "name" in course and course["name"][:6] == "CS2105":
+            course_path = os.path.join(root_folder, course["name"][:6])
+
+            # Check if the course directory exists, if not then create it
+            if not os.path.exists(course_path):
+                os.makedirs(course_path)
+
             download_files_for_course(course["id"], course_path)
 
 
@@ -205,6 +237,37 @@ def list_all():
 
 
 def main():
+    global config
+    global token
+    config = load_config()
+    # Headers for API calls
+    global headers
+
+    if "token" not in config or is_token_expired(config["token"]):
+        print("Please provide your Canvas API token.")
+        print("Instructions: [provide instructions on how to get the token here]")
+        token = input("Enter token: ")
+        config["token"] = token
+        if is_token_expired(token):
+            print("The token you provided is invalid or expired. Please get a new one.")
+            return
+        else:
+            print("Token accepted!")
+    token = config["token"]
+    headers = {"Authorization": f"Bearer {token}"}
+    if "semester" not in config:
+        semester = (
+            "["
+            + input("Enter the current semester as a 4 digit number (e.g. 2310): ")
+            + "]"
+        )
+        config["semester"] = semester
+
+    if "download_path" not in config:
+        download_path = input("Enter the path to download files to: ")
+        config["download_path"] = download_path
+    save_config(config)
+
     while True:
         # Wait for user input
         user_input = input("Enter your command: ")
