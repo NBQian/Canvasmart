@@ -4,8 +4,9 @@ from datetime import datetime
 import os
 import json
 
-CONFIG_FILE = "config.json"
 config = {}
+
+CONFIG_FILE = "config.json"
 
 
 def load_config():
@@ -159,8 +160,9 @@ def download_files_for_course(course_id, course_path):
     if has_course_files(course_id):
         folders = get_folders("courses", course_id)
         for folder in folders:
-            if folder["name"] != "unfiled":
+            if folder["name"] == "course files":
                 download_files_in_folder(folder["id"], course_path)
+                break
     else:
         # If no 'files' section, download from the 'modules' section
         download_files_by_modules(course_id, course_path)
@@ -176,14 +178,12 @@ def download_all():
 
     courses = get_courses()
     for course in courses:
-        if "name" in course and course["name"][:6] == "CS2105":
-            course_path = os.path.join(root_folder, course["name"][:6])
+        course_path = os.path.join(root_folder, course["name"][:6])
 
-            # Check if the course directory exists, if not then create it
-            if not os.path.exists(course_path):
-                os.makedirs(course_path)
-
-            download_files_for_course(course["id"], course_path)
+        # Check if the course directory exists, if not then create it
+        if not os.path.exists(course_path):
+            os.makedirs(course_path)
+        download_files_for_course(course["id"], course_path)
 
 
 def display_folders_and_files(folder_id, indentation=0):
@@ -244,8 +244,6 @@ def main():
     global headers
 
     if "token" not in config or is_token_expired(config["token"]):
-        print("Please provide your Canvas API token.")
-        print("Instructions: [provide instructions on how to get the token here]")
         token = input("Enter token: ")
         config["token"] = token
         if is_token_expired(token):
@@ -264,7 +262,9 @@ def main():
         config["semester"] = semester
 
     if "download_path" not in config:
-        download_path = input("Enter the path to download files to: ")
+        download_path = input("Enter the path to download files to: ").strip()
+        while not os.path.exists(download_path):
+            download_path = input("Path not found, enter a valid path: ").strip()
         config["download_path"] = download_path
     save_config(config)
 
