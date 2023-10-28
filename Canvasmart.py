@@ -255,52 +255,61 @@ def list_new():
             print("=" * len(course["name"]))
             print(course["name"])
             print("=" * len(course["name"]))
-            
-            # Flag to indicate if new files are found
+
             new_files_found = False
-            
+
             if has_course_files(course["id"]):
-                folders = get_paginated_data(
-                    f"{base_url}/courses/{course['id']}/folders"
-                )
-                course_files_folder = next(
-                    (folder for folder in folders if folder["name"] == "course files"),
-                    None,
-                )
+                folders = get_paginated_data(f"{base_url}/courses/{course['id']}/folders")
+                course_files_folder = next((folder for folder in folders if folder["name"] == "course files"), None)
+                
                 if course_files_folder:
-                    new_files_found = display_new_files_in_folders(course_files_folder["id"], 4, existing_files)
+                    new_files_found, new_files = display_new_files_in_folders(course_files_folder["id"], 4, existing_files)
+
+                    if new_files_found:
+                        for file in new_files:
+                            print(" " * 4 + file)
             else:
                 print("    No 'files' section found. Checking 'Modules'...")
                 new_files_found = display_new_files_by_modules(course["id"], existing_files, indentation=4)
-            
-            # If no new files are found, print a message
+
             if not new_files_found:
                 print("    Your local files are up to date!")
 
+
 def display_new_files_in_folders(folder_id, indentation, existing_files):
+    # Initialize flag and list for new files
+    new_files_found = False
+    new_file_names = []
+    
+    # Check for new files in the current folder
     files = get_paginated_data(f"{base_url}/folders/{folder_id}/files")
     new_files = [f for f in files if f["display_name"] not in existing_files]
-    
-    new_files_found = False
     
     if new_files:
         new_files_found = True
         for file in new_files:
-            print(" " * indentation + file["display_name"])
-
+            new_file_names.append(file["display_name"])
+            
+    # Check for new files in subfolders
     folders = get_paginated_data(f"{base_url}/folders/{folder_id}/folders")
     for folder in folders:
         if folder["name"] == "unfiled":
             continue
-        folder_has_new_files = display_new_files_in_folders(folder["id"], indentation + 4, existing_files)
-
+        folder_has_new_files, subfolder_new_files = display_new_files_in_folders(folder["id"], indentation + 4, existing_files)
+        
         if folder_has_new_files:
             print(" " * indentation + folder["name"])
             print(" " * indentation + "\\" + "-" * len(folder["name"]) + "/")
-        
-        new_files_found = new_files_found or folder_has_new_files
+            for subfile in subfolder_new_files:
+                print(" " * (indentation + 4) + subfile)
+            new_files_found = True
+            
+    return new_files_found, new_file_names
 
-    return new_files_found
+
+
+
+
 
 
 
