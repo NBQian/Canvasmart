@@ -248,14 +248,17 @@ def get_existing_files(download_path):
 
 def list_new():
     existing_files = get_existing_files(config["download_path"])
-
+    
     courses = get_paginated_data(f"{base_url}/courses")
     for course in courses:
         if "name" in course and course["name"].endswith(config["semester"]):
             print("=" * len(course["name"]))
             print(course["name"])
             print("=" * len(course["name"]))
-
+            
+            # Flag to indicate if new files are found
+            new_files_found = False
+            
             if has_course_files(course["id"]):
                 folders = get_paginated_data(
                     f"{base_url}/courses/{course['id']}/folders"
@@ -265,51 +268,61 @@ def list_new():
                     None,
                 )
                 if course_files_folder:
-                    display_new_files_in_folders(course_files_folder["id"], 4, existing_files)
+                    new_files_found = display_new_files_in_folders(course_files_folder["id"], 4, existing_files)
             else:
                 print("    No 'files' section found. Checking 'Modules'...")
-                display_new_files_by_modules(course["id"], existing_files, indentation=4)
-
+                new_files_found = display_new_files_by_modules(course["id"], existing_files, indentation=4)
+            
+            # If no new files are found, print a message
+            if not new_files_found:
+                print("    Your local files are up to date!")
 
 def display_new_files_in_folders(folder_id, indentation, existing_files):
     files = get_paginated_data(f"{base_url}/folders/{folder_id}/files")
     new_files = [f for f in files if f["display_name"] not in existing_files]
+    
+    new_files_found = False
+    
+    if new_files:
+        new_files_found = True
+        for file in new_files:
+            print(" " * indentation + file["display_name"])
 
-    subfolder_has_new_files = False
     folders = get_paginated_data(f"{base_url}/folders/{folder_id}/folders")
     for folder in folders:
         if folder["name"] == "unfiled":
             continue
-        if display_new_files_in_folders(folder["id"], indentation + 4, existing_files):
-            subfolder_has_new_files = True
+        folder_has_new_files = display_new_files_in_folders(folder["id"], indentation + 4, existing_files)
 
-    if new_files or subfolder_has_new_files:
-        print(" " * indentation + folder["name"])
-        print(" " * indentation + "\\" + "-" * len(folder["name"]) + "/")
-
-        for file in new_files:
-            print(" " * (indentation + 4) + file["display_name"])
+        if folder_has_new_files:
+            print(" " * indentation + folder["name"])
+            print(" " * indentation + "\\" + "-" * len(folder["name"]) + "/")
         
-        return True
+        new_files_found = new_files_found or folder_has_new_files
 
-    return False
+    return new_files_found
+
 
 
 def display_new_files_by_modules(course_id, existing_files, indentation=4):
     modules = get_paginated_data(f"{base_url}/courses/{course_id}/modules")
+    
+    new_files_found = False
+
     for module in modules:
         items = get_paginated_data(
             f"{base_url}/courses/{course_id}/modules/{module['id']}/items"
         )
         new_items = [item for item in items if item["type"] == "File" and item["title"] not in existing_files]
-        
-        # Only print the module name if there are new items in it
+
         if new_items:
+            new_files_found = True
             print(" " * indentation + module["name"])
             print(" " * indentation + "\\" + "-" * len(module["name"]) + "/")
             for item in new_items:
                 print(" " * (indentation + 4) + item["title"])
 
+    return new_files_found
 
 
 
