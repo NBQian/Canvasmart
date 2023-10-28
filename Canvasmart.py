@@ -84,17 +84,18 @@ def get_files(folder_id):
 
 
 # Function to get courses
-def get_courses():
+def get_courses(course_names):
     courses_url = f"{base_url}/courses"
     all_courses = get_paginated_data(courses_url)
 
-    filtered_courses = []
+    valid_courses = []
     for course in all_courses:
         if "created_at" in course:
             if course["name"].endswith(config["semester"]):
-                filtered_courses.append(course)
-
-    return filtered_courses
+                valid_courses.append(course)
+    if course_names != None:
+        return [course for course in valid_courses if course["name"][:6] in course_names]        
+    return valid_courses
 
 
 # Function to get modules for a course
@@ -168,15 +169,14 @@ def download_files_for_course(course_id, course_path):
         download_files_by_modules(course_id, course_path)
 
 
-def download_all():
+def download_all(course_names = None):
     # Starting with the path provided by the user
     root_folder = config["download_path"]
 
     # Check if the directory exists, if not then create it
     if not os.path.exists(root_folder):
         os.makedirs(root_folder)
-
-    courses = get_courses()
+    courses = get_courses(course_names)
     for course in courses:
         course_path = os.path.join(root_folder, course["name"][:6])
 
@@ -184,6 +184,9 @@ def download_all():
         if not os.path.exists(course_path):
             os.makedirs(course_path)
         download_files_for_course(course["id"], course_path)
+
+def download_for_courses(course_names):
+    download_all(course_names)
 
 
 def display_folders_and_files(folder_id, indentation=0):
@@ -235,6 +238,15 @@ def list_all():
                 print("    No 'files' section found. Checking 'Modules'...")
                 display_files_by_modules(course["id"])
 
+def display_help_msg():
+    print("List of available commands:")
+    print("  - download all: Download all courses' materials")
+    print("  - download for <course name1> <course name2> ... : Download materials for specified courses")
+    print("  - list: List all courses available")
+    print("  - exit: Exit the program")
+    print("  - help: Display this help message")
+
+
 
 def main():
     global config
@@ -270,16 +282,24 @@ def main():
 
     while True:
         # Wait for user input
-        user_input = input("Enter your command: ")
-
+        command = input("Enter your command: ")
+        parts = command.split(" ")
+        action = parts[0]
+        if action == "download":
+            sub_action = parts[1]
+            if sub_action == "for":
+                course_names = parts[2:]
+                download_for_courses(course_names)
+            elif sub_action == "all":
+                download_all()
         # Handle the possible commands
-        if user_input == "list all":
+        elif action == "list":
             list_all()
-        elif user_input == "download all":
-            download_all()
-        elif user_input == "exit":
+        elif action == "exit":
             print("Exiting the program.")
             break
+        elif action == "help":
+            display_help_msg()
         else:
             print("Instruction not recognized. Please enter a valid command.")
 
