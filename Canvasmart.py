@@ -13,7 +13,7 @@ def load_config():
     try:
         with open(CONFIG_FILE, "r") as f:
             return json.load(f)
-    except FileNotFoundError:
+    except Exception as e:
         return {}
 
 
@@ -360,6 +360,35 @@ def display_help_msg():
 def display_error_msg():
     print("Instruction not recognized. Please enter a valid command.")
 
+def welcome():
+    print("Welcome to the Canvas File Management Tool!")
+    print("This tool will help you efficiently manage your Canvas files.")
+    print("=" * 50)
+    
+    print("\nTo get started, you'll need a Canvas API token.")
+    print("To obtain a token:")
+    print("1. Log in to your Canvas account.")
+    print("2. Go to 'Account' > 'Settings'.")
+    print("3. Scroll down to the 'Approved Integrations' section.")
+    print("4. Click on '+ New Access Token'.")
+    print("5. Follow the prompts to generate your token.")
+    print("=" * 50)
+    
+    token = input("\nPlease enter your Canvas API token: ")
+    return token
+
+def is_token_valid(token):
+    headers = {'Authorization': f'Bearer {token}'}
+    response = requests.get('https://your-api-endpoint.com/resource', headers=headers)
+
+    if response.status_code == 200:
+        return True
+    elif response.status_code == 401:
+        return False
+    else:
+        print(f'Unexpected status code: {response.status_code}')
+        return False
+
 def main():
     global config
     global token
@@ -367,20 +396,26 @@ def main():
     # Headers for API calls
     global headers
 
-    if "token" not in config or is_token_expired(config["token"]):
-        token = input("Enter token: ")
+    if "token" not in config:
+        token = welcome()
+        while not (is_token_valid(token)):
+            token = input('Token is invalid or has expired. Please enter a new token: ')
+        print("Token accepted!")
         config["token"] = token
-        if is_token_expired(token):
-            print("The token you provided is invalid or expired. Please get a new one.")
-            return
-        else:
-            print("Token accepted!")
+            
+    elif is_token_expired(config["token"]):
+        token = input("The token you provided is expired. Please enter a new one: ")
+        while not (is_token_valid(token)):
+            token = input('Token is invalid or has expired. Please enter a new token: ')
+        print("Token accepted!")
+        config["token"] = token
+
     token = config["token"]
     headers = {"Authorization": f"Bearer {token}"}
     if "semester" not in config:
         semester = (
             "["
-            + input("Enter the current semester as a 4 digit number (e.g. 2310): ")
+            + input("Enter the current semester as a 4 digit number (e.g. Semester 1 in Year 2023 ==> 2310): ")
             + "]"
         )
         config["semester"] = semester
