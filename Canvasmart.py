@@ -275,30 +275,42 @@ def display_new_files_in_folders(folder_id, indentation, existing_files):
     files = get_paginated_data(f"{base_url}/folders/{folder_id}/files")
     new_files = [f for f in files if f["display_name"] not in existing_files]
 
-    if new_files:
-        for file in new_files:
-            print(" " * indentation + file["display_name"])
-
+    subfolder_has_new_files = False
     folders = get_paginated_data(f"{base_url}/folders/{folder_id}/folders")
     for folder in folders:
         if folder["name"] == "unfiled":
             continue
+        if display_new_files_in_folders(folder["id"], indentation + 4, existing_files):
+            subfolder_has_new_files = True
+
+    if new_files or subfolder_has_new_files:
         print(" " * indentation + folder["name"])
         print(" " * indentation + "\\" + "-" * len(folder["name"]) + "/")
-        display_new_files_in_folders(folder["id"], indentation + 4, existing_files)
+
+        for file in new_files:
+            print(" " * (indentation + 4) + file["display_name"])
+        
+        return True
+
+    return False
 
 
 def display_new_files_by_modules(course_id, existing_files, indentation=4):
     modules = get_paginated_data(f"{base_url}/courses/{course_id}/modules")
     for module in modules:
-        print(" " * indentation + module["name"])
-        print(" " * indentation + "\\" + "-" * len(module["name"]) + "/")
         items = get_paginated_data(
             f"{base_url}/courses/{course_id}/modules/{module['id']}/items"
         )
         new_items = [item for item in items if item["type"] == "File" and item["title"] not in existing_files]
-        for item in new_items:
-            print(" " * (indentation + 4) + item["title"])
+        
+        # Only print the module name if there are new items in it
+        if new_items:
+            print(" " * indentation + module["name"])
+            print(" " * indentation + "\\" + "-" * len(module["name"]) + "/")
+            for item in new_items:
+                print(" " * (indentation + 4) + item["title"])
+
+
 
 
 def display_help_msg():
@@ -309,7 +321,8 @@ def display_help_msg():
     print("  - exit: Exit the program")
     print("  - help: Display this help message")
 
-
+def display_error_msg():
+    print("Instruction not recognized. Please enter a valid command.")
 
 def main():
     global config
@@ -355,6 +368,8 @@ def main():
                 download_for_courses(course_names)
             elif sub_action == "all":
                 download_all()
+            else:
+                display_error_msg()
         # Handle the possible commands
         elif action == "list":
             sub_action = parts[1]
@@ -362,13 +377,15 @@ def main():
                 list_all()
             elif sub_action == "new":
                 list_new()
+            else:
+                display_error_msg()
         elif action == "exit":
             print("Exiting the program.")
             break
         elif action == "help":
             display_help_msg()
         else:
-            print("Instruction not recognized. Please enter a valid command.")
+            display_error_msg()
 
 
 if __name__ == "__main__":
