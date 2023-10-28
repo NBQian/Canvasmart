@@ -246,12 +246,15 @@ def get_existing_files(download_path):
     return existing_files
 
 
-def list_new():
+def list_new(dic):
     existing_files = get_existing_files(config["download_path"])
     
     courses = get_paginated_data(f"{base_url}/courses")
     for course in courses:
         if "name" in course and course["name"].endswith(config["semester"]):
+            course_path = os.path.join(config["download_path"], course["name"][:6])
+            if not os.path.exists(course_path):
+                os.makedirs(course_path)  # Create course folder if it doesn't exist
             print("=" * len(course["name"]))
             print(course["name"])
             print("=" * len(course["name"]))
@@ -263,20 +266,20 @@ def list_new():
                 course_files_folder = next((folder for folder in folders if folder["name"] == "course files"), None)
                 
                 if course_files_folder:
-                    new_files_found, new_files = display_new_files_in_folders(course_files_folder["id"], 4, existing_files)
+                    new_files_found, new_files = display_new_files_in_folders(course_files_folder["id"], 4, existing_files, course_path, dic)
 
                     if new_files_found:
                         for file in new_files:
                             print(" " * 4 + file)
             else:
                 print("    No 'files' section found. Checking 'Modules'...")
-                new_files_found = display_new_files_by_modules(course["id"], existing_files, indentation=4)
+                new_files_found = display_new_files_by_modules(course["id"], existing_files, 4, course_path, dic)
 
             if not new_files_found:
                 print("    Your local files are up to date!")
 
 
-def display_new_files_in_folders(folder_id, indentation, existing_files):
+def display_new_files_in_folders(folder_id, indentation, existing_files, local_path, dic):
     # Initialize flag and list for new files
     new_files_found = False
     new_file_names = []
@@ -288,6 +291,11 @@ def display_new_files_in_folders(folder_id, indentation, existing_files):
     if new_files:
         new_files_found = True
         for file in new_files:
+            new_file_path = os.path.join(local_path, file["display_name"])  # Construct local path
+            dic[file["display_name"]] = {
+                'url': file['url'],
+                'local_path': new_file_path
+            }
             new_file_names.append(file["display_name"])
             
     # Check for new files in subfolders
@@ -295,7 +303,10 @@ def display_new_files_in_folders(folder_id, indentation, existing_files):
     for folder in folders:
         if folder["name"] == "unfiled":
             continue
-        folder_has_new_files, subfolder_new_files = display_new_files_in_folders(folder["id"], indentation + 4, existing_files)
+        new_folder_path = os.path.join(local_path, folder["name"])  # Construct new local folder path
+        if not os.path.exists(new_folder_path):
+            os.makedirs(new_folder_path)  # Create folder if it doesn't exist
+        folder_has_new_files, subfolder_new_files = display_new_files_in_folders(folder["id"], indentation + 4, existing_files, new_folder_path, dic)
         
         if folder_has_new_files:
             print(" " * indentation + folder["name"])
@@ -308,12 +319,7 @@ def display_new_files_in_folders(folder_id, indentation, existing_files):
 
 
 
-
-
-
-
-
-def display_new_files_by_modules(course_id, existing_files, indentation=4):
+def display_new_files_by_modules(course_id, existing_files, indentation, local_path, dic):
     modules = get_paginated_data(f"{base_url}/courses/{course_id}/modules")
     
     new_files_found = False
@@ -329,11 +335,19 @@ def display_new_files_by_modules(course_id, existing_files, indentation=4):
             print(" " * indentation + module["name"])
             print(" " * indentation + "\\" + "-" * len(module["name"]) + "/")
             for item in new_items:
+                file_data = get_paginated_data(f"{base_url}/courses/{course_id}/files/{item['content_id']}")  # Replace with actual API call           
+                local_path = os.path.join(module_path, file_data["display_name"])
+                new_files_dict[file_data["display_name"]] = {
+                    'url': file_data['url'],
+                    'local_path': local_path
+                }
                 print(" " * (indentation + 4) + item["title"])
 
     return new_files_found
 
-
+def download_new(dic):
+    for file_name, file_info in dic.items():
+        download_file(file_info['url'], file_info['local_path'])
 
 def display_help_msg():
     print("List of available commands:")
@@ -377,7 +391,7 @@ def main():
             download_path = input("Path not found, enter a valid path: ").strip()
         config["download_path"] = download_path
     save_config(config)
-
+    dic = {}
     while True:
         # Wait for user input
         command = input("Enter your command: ")
@@ -390,6 +404,8 @@ def main():
                 download_for_courses(course_names)
             elif sub_action == "all":
                 download_all()
+            elif sub_action == "new":
+                download_new(dic)
             else:
                 display_error_msg()
         # Handle the possible commands
@@ -398,7 +414,7 @@ def main():
             if sub_action == "all":
                 list_all()
             elif sub_action == "new":
-                list_new()
+                list_new(dic)
             else:
                 display_error_msg()
         elif action == "exit":
@@ -408,7 +424,6 @@ def main():
             display_help_msg()
         else:
             display_error_msg()
-
 
 if __name__ == "__main__":
     main()
