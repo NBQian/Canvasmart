@@ -238,6 +238,69 @@ def list_all():
                 print("    No 'files' section found. Checking 'Modules'...")
                 display_files_by_modules(course["id"])
 
+def get_existing_files(download_path):
+    existing_files = set()
+    for root, dirs, files in os.walk(download_path):
+        for filename in files:
+            existing_files.add(filename)
+    return existing_files
+
+
+def list_new():
+    existing_files = get_existing_files(config["download_path"])
+
+    courses = get_paginated_data(f"{base_url}/courses")
+    for course in courses:
+        if "name" in course and course["name"].endswith(config["semester"]):
+            print("=" * len(course["name"]))
+            print(course["name"])
+            print("=" * len(course["name"]))
+
+            if has_course_files(course["id"]):
+                folders = get_paginated_data(
+                    f"{base_url}/courses/{course['id']}/folders"
+                )
+                course_files_folder = next(
+                    (folder for folder in folders if folder["name"] == "course files"),
+                    None,
+                )
+                if course_files_folder:
+                    display_new_files_in_folders(course_files_folder["id"], 4, existing_files)
+            else:
+                print("    No 'files' section found. Checking 'Modules'...")
+                display_new_files_by_modules(course["id"], existing_files, indentation=4)
+
+
+def display_new_files_in_folders(folder_id, indentation, existing_files):
+    files = get_paginated_data(f"{base_url}/folders/{folder_id}/files")
+    new_files = [f for f in files if f["display_name"] not in existing_files]
+
+    if new_files:
+        for file in new_files:
+            print(" " * indentation + file["display_name"])
+
+    folders = get_paginated_data(f"{base_url}/folders/{folder_id}/folders")
+    for folder in folders:
+        if folder["name"] == "unfiled":
+            continue
+        print(" " * indentation + folder["name"])
+        print(" " * indentation + "\\" + "-" * len(folder["name"]) + "/")
+        display_new_files_in_folders(folder["id"], indentation + 4, existing_files)
+
+
+def display_new_files_by_modules(course_id, existing_files, indentation=4):
+    modules = get_paginated_data(f"{base_url}/courses/{course_id}/modules")
+    for module in modules:
+        print(" " * indentation + module["name"])
+        print(" " * indentation + "\\" + "-" * len(module["name"]) + "/")
+        items = get_paginated_data(
+            f"{base_url}/courses/{course_id}/modules/{module['id']}/items"
+        )
+        new_items = [item for item in items if item["type"] == "File" and item["title"] not in existing_files]
+        for item in new_items:
+            print(" " * (indentation + 4) + item["title"])
+
+
 def display_help_msg():
     print("List of available commands:")
     print("  - download all: Download all courses' materials")
@@ -294,7 +357,11 @@ def main():
                 download_all()
         # Handle the possible commands
         elif action == "list":
-            list_all()
+            sub_action = parts[1]
+            if sub_action == "all":
+                list_all()
+            elif sub_action == "new":
+                list_new()
         elif action == "exit":
             print("Exiting the program.")
             break
