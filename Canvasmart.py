@@ -22,7 +22,6 @@ def save_config(config):
         json.dump(config, f)
 
 
-# Base URL for your Canvas instance
 base_url = "https://canvas.nus.edu.sg/api/v1"
 
 
@@ -31,12 +30,8 @@ def is_token_expired(token):
     test_url = f"{base_url}/courses"
     response = requests.get(test_url, headers=h)
 
-    # Checking for unauthorized or forbidden status codes
     if response.status_code == 401 or response.status_code == 403:
-        # Optionally, check for specific message in response to confirm token issue
-        if (
-            "token is expired" in response.text
-        ):  # This message may vary, check Canvas API documentation
+        if "token is expired" in response.text:
             return True
         return False
     elif response.status_code == 200:
@@ -46,14 +41,12 @@ def is_token_expired(token):
         return False
 
 
-# Function to get paginated data
 def get_paginated_data(url):
     all_data = []
     while url:
         response = requests.get(url, headers=headers)
         if response.status_code == 200:
             all_data.extend(json.loads(response.text))
-            # Check if there is a next page
             link_header = response.headers.get("Link", None)
             if link_header:
                 links = link_header.split(",")
@@ -71,19 +64,16 @@ def get_course_files(course_id):
     return get_paginated_data(course_files_url)
 
 
-# Function to get folders for a course or a parent folder
 def get_folders(parent_type, parent_id):
     folders_url = f"{base_url}/{parent_type}/{parent_id}/folders"
     return get_paginated_data(folders_url)
 
 
-# Function to get files in a folder
 def get_files(folder_id):
     files_url = f"{base_url}/folders/{folder_id}/files"
     return get_paginated_data(files_url)
 
 
-# Function to get courses
 def get_courses(course_names):
     courses_url = f"{base_url}/courses"
     all_courses = get_paginated_data(courses_url)
@@ -98,13 +88,11 @@ def get_courses(course_names):
     return valid_courses
 
 
-# Function to get modules for a course
 def get_modules(course_id):
     modules_url = f"{base_url}/courses/{course_id}/modules"
     return get_paginated_data(modules_url)
 
 
-# Function to get items in a module
 def get_module_items(course_id, module_id):
     items_url = f"{base_url}/courses/{course_id}/modules/{module_id}/items"
     return get_paginated_data(items_url)
@@ -125,16 +113,14 @@ def download_files_for_module(course_id, module_id, module_path):
 
 
 def download_files_in_folder(folder_id, destination_path):
-    # First, create any sub-folders
     subfolders = get_folders("folders", folder_id)
     for subfolder in subfolders:
-        if subfolder["name"] == "unfiled":  # Skip the 'unfiled' folder
+        if subfolder["name"] == "unfiled":
             continue
         subfolder_path = os.path.join(destination_path, subfolder["name"])
         os.makedirs(subfolder_path, exist_ok=True)
         download_files_in_folder(subfolder["id"], subfolder_path)
 
-    # Then, download the files in the current folder
     files = get_files(folder_id)
     for file in files:
         download_file(file["url"], os.path.join(destination_path, file["display_name"]))
@@ -165,22 +151,18 @@ def download_files_for_course(course_id, course_path):
                 download_files_in_folder(folder["id"], course_path)
                 break
     else:
-        # If no 'files' section, download from the 'modules' section
         download_files_by_modules(course_id, course_path)
 
 
 def download_all(course_names = None):
-    # Starting with the path provided by the user
     root_folder = config["download_path"]
 
-    # Check if the directory exists, if not then create it
     if not os.path.exists(root_folder):
         os.makedirs(root_folder)
     courses = get_courses(course_names)
     for course in courses:
         course_path = os.path.join(root_folder, course["name"][:6])
 
-        # Check if the course directory exists, if not then create it
         if not os.path.exists(course_path):
             os.makedirs(course_path)
         download_files_for_course(course["id"], course_path)
@@ -254,7 +236,7 @@ def list_new(dic):
         if "name" in course and course["name"].endswith(config["semester"]):
             course_path = os.path.join(config["download_path"], course["name"][:6])
             if not os.path.exists(course_path):
-                os.makedirs(course_path)  # Create course folder if it doesn't exist
+                os.makedirs(course_path)
             print("=" * len(course["name"]))
             print(course["name"])
             print("=" * len(course["name"]))
@@ -280,32 +262,29 @@ def list_new(dic):
 
 
 def display_new_files_in_folders(folder_id, indentation, existing_files, local_path, dic):
-    # Initialize flag and list for new files
     new_files_found = False
     new_file_names = []
     
-    # Check for new files in the current folder
     files = get_paginated_data(f"{base_url}/folders/{folder_id}/files")
     new_files = [f for f in files if f["display_name"] not in existing_files]
     
     if new_files:
         new_files_found = True
         for file in new_files:
-            new_file_path = os.path.join(local_path, file["display_name"])  # Construct local path
+            new_file_path = os.path.join(local_path, file["display_name"])
             dic[file["display_name"]] = {
                 'url': file['url'],
                 'local_path': new_file_path
             }
             new_file_names.append(file["display_name"])
             
-    # Check for new files in subfolders
     folders = get_paginated_data(f"{base_url}/folders/{folder_id}/folders")
     for folder in folders:
         if folder["name"] == "unfiled":
             continue
-        new_folder_path = os.path.join(local_path, folder["name"])  # Construct new local folder path
+        new_folder_path = os.path.join(local_path, folder["name"])
         if not os.path.exists(new_folder_path):
-            os.makedirs(new_folder_path)  # Create folder if it doesn't exist
+            os.makedirs(new_folder_path)
         folder_has_new_files, subfolder_new_files = display_new_files_in_folders(folder["id"], indentation + 4, existing_files, new_folder_path, dic)
         
         if folder_has_new_files:
@@ -335,7 +314,7 @@ def display_new_files_by_modules(course_id, existing_files, indentation, local_p
             print(" " * indentation + module["name"])
             print(" " * indentation + "\\" + "-" * len(module["name"]) + "/")
             for item in new_items:
-                file_data = get_paginated_data(f"{base_url}/courses/{course_id}/files/{item['content_id']}")  # Replace with actual API call           
+                file_data = get_paginated_data(f"{base_url}/courses/{course_id}/files/{item['content_id']}")          
                 local_path = os.path.join(module_path, file_data["display_name"])
                 new_files_dict[file_data["display_name"]] = {
                     'url': file_data['url'],
@@ -393,7 +372,6 @@ def main():
     global config
     global token
     config = load_config()
-    # Headers for API calls
     global headers
 
     if "token" not in config:
@@ -428,7 +406,6 @@ def main():
     save_config(config)
     dic = {}
     while True:
-        # Wait for user input
         command = input("Enter your command: ")
         parts = command.split(" ")
         action = parts[0]
@@ -443,7 +420,6 @@ def main():
                 download_new(dic)
             else:
                 display_error_msg()
-        # Handle the possible commands
         elif action == "list":
             sub_action = parts[1]
             if sub_action == "all":
