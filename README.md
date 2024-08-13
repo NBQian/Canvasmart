@@ -2,6 +2,7 @@
 A self-initiated project to help NUS students manage Canvas files easily
 
 This Python script allows users to easily download their course files from the Canvas Learning Management System. Specifically tailored for students at the National University of Singapore (NUS), the script retrieves files for a given semester and organizes them neatly in local directories.
+<img width="1054" alt="image" src="https://github.com/user-attachments/assets/0c12da65-8315-4f26-b1c8-f84d2d8b995b">
 
 ## Features:
 
@@ -22,24 +23,23 @@ This Python script allows users to easily download their course files from the C
   
 ## Setup:
 
-1. Clone the repository:
+1. Download the script
 
 2. Obtain your Canvas API token. You can get this from your Canvas settings.
 
-3. Run the script: python3 Canvasmart.py
+3. Run the script: `python Canvasmart.py`
 
 4. When prompted, enter your Canvas API token.
 
 5. Specify the semester you want to fetch files for (e.g., `2310` for Semester 1 of 2023/2024).
 
-6. Specify the local directory where you'd like to download the files (you can simply drag and drop the target folder to your terminal).
+6. Specify the local directory where you'd like to download the files.
 
 7. Use the available commands (`list all`, `download all`, `exit`) to interact with the program.
 
 ## Usage:
 
-- `list all`: Displays all available files in the Canvas LMS for the given semester.
-
+- `list all`: Displays all available files for all courses on Canvas for the given semester.
+- `list new`: Displays all available files in the Canvas that have not been downloaded to the local directory.
 - `download all`: Downloads all files to the specified directory, organized by course name.
-
 - `exit`: Exits the program.
