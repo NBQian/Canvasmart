@@ -201,7 +201,7 @@ def display_files_by_modules(course_id, indentation=4):
 def list_all():
     courses = get_paginated_data(f"{base_url}/courses")
     for course in courses:
-        if "name" in course and course["name"].endswith("[2310]"):
+        if "name" in course and course["name"].endswith(config["semester"]):
             print("=" * len(course["name"]))
             print(course["name"])
             print("=" * len(course["name"]))
@@ -410,24 +410,30 @@ def main():
         parts = command.split(" ")
         action = parts[0]
         if action == "download":
-            sub_action = parts[1]
-            if sub_action == "for":
-                course_names = parts[2:]
-                download_for_courses(course_names)
-            elif sub_action == "all":
-                download_all()
-            elif sub_action == "new":
-                download_new(dic)
-            else:
+            if len(parts) == 1:  # No sub-action provided
                 display_error_msg()
+            else:
+                sub_action = parts[1]
+                if sub_action == "for":
+                    course_names = parts[2:]
+                    download_for_courses(course_names)
+                elif sub_action == "all":
+                    download_all()
+                elif sub_action == "new":
+                    download_new(dic)
+                else:
+                    display_error_msg()
         elif action == "list":
-            sub_action = parts[1]
-            if sub_action == "all":
-                list_all()
-            elif sub_action == "new":
-                list_new(dic)
-            else:
+            if len(parts) == 1:  # No sub-action provided
                 display_error_msg()
+            else:
+                sub_action = parts[1]
+                if sub_action == "all":
+                    list_all()
+                elif sub_action == "new":
+                    list_new(dic)
+                else:
+                    display_error_msg()
         elif action == "exit":
             print("Exiting the program.")
             break
