@@ -331,8 +331,10 @@ def download_new(dic):
 def display_help_msg():
     print("List of available commands:")
     print("  - download all: Download all courses' materials")
+    print("  - download new: Download new files")
     print("  - download for <course name1> <course name2> ... : Download materials for specified courses")
-    print("  - list: List all courses available")
+    print("  - list all: List all files available for download")
+    print("  - list new: List new files available for download")
     print("  - exit: Exit the program")
     print("  - help: Display this help message")
 
