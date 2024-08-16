@@ -38,8 +38,9 @@ This Python script allows users to easily download their course files from the C
 7. Use the available commands (`list all`, `download all`, `exit`) to interact with the program.
 
 ## Usage:
-
+- `help`: Display the help message.
 - `list all`: Displays all available files for all courses on Canvas for the given semester.
 - `list new`: Displays all available files in the Canvas that have not been downloaded to the local directory.
 - `download all`: Downloads all files to the specified directory, organized by course name.
+- `download new`: Downloads new files to the specified directory, organized by course name.
 - `exit`: Exits the program.
