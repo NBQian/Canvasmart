@@ -224,8 +224,10 @@ def get_existing_files(download_path):
     existing_files = set()
     for root, dirs, files in os.walk(download_path):
         for filename in files:
-            existing_files.add(filename)
+            relative_path = os.path.relpath(os.path.join(root, filename), download_path)
+            existing_files.add(relative_path)
     return existing_files
+
 
 
 def list_new(dic):
@@ -266,17 +268,19 @@ def display_new_files_in_folders(folder_id, indentation, existing_files, local_p
     new_file_names = []
     
     files = get_paginated_data(f"{base_url}/folders/{folder_id}/files")
-    new_files = [f for f in files if f["display_name"] not in existing_files]
     
-    if new_files:
-        new_files_found = True
-        for file in new_files:
+    for file in files:
+        relative_path = os.path.relpath(os.path.join(local_path, file["display_name"]), config["download_path"])
+        
+        if relative_path not in existing_files:
+            new_files_found = True
             new_file_path = os.path.join(local_path, file["display_name"])
             dic[file["display_name"]] = {
                 'url': file['url'],
                 'local_path': new_file_path
             }
             new_file_names.append(file["display_name"])
+            existing_files.add(relative_path)
             
     folders = get_paginated_data(f"{base_url}/folders/{folder_id}/folders")
     for folder in folders:
@@ -295,8 +299,6 @@ def display_new_files_in_folders(folder_id, indentation, existing_files, local_p
             new_files_found = True
             
     return new_files_found, new_file_names
-
-
 
 def display_new_files_by_modules(course_id, existing_files, indentation, local_path, dic):
     modules = get_paginated_data(f"{base_url}/courses/{course_id}/modules")
@@ -360,7 +362,7 @@ def welcome():
 
 def is_token_valid(token):
     headers = {'Authorization': f'Bearer {token}'}
-    response = requests.get('https://your-api-endpoint.com/resource', headers=headers)
+    response = requests.get('https://canvas.nus.edu.sg/api/v1/users/self', headers=headers)
 
     if response.status_code == 200:
         return True
