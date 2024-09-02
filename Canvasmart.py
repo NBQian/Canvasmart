@@ -84,7 +84,7 @@ def get_courses(course_names):
             if course["name"].endswith(config["semester"]):
                 valid_courses.append(course)
     if course_names != None:
-        return [course for course in valid_courses if course["name"][:6] in course_names]        
+        return [course for course in valid_courses if course["name"].split()[0] in course_names]        
     return valid_courses
 
 
@@ -161,7 +161,7 @@ def download_all(course_names = None):
         os.makedirs(root_folder)
     courses = get_courses(course_names)
     for course in courses:
-        course_path = os.path.join(root_folder, course["name"][:6])
+        course_path = os.path.join(root_folder, course["name"].split()[0])
 
         if not os.path.exists(course_path):
             os.makedirs(course_path)
@@ -236,7 +236,7 @@ def list_new(dic):
     courses = get_paginated_data(f"{base_url}/courses")
     for course in courses:
         if "name" in course and course["name"].endswith(config["semester"]):
-            course_path = os.path.join(config["download_path"], course["name"][:6])
+            course_path = os.path.join(config["download_path"], course["name"].split()[0])
             if not os.path.exists(course_path):
                 os.makedirs(course_path)
             print("=" * len(course["name"]))
